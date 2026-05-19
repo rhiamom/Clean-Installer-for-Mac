@@ -49,6 +49,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _packName = string.Empty;
     [ObservableProperty] private string _packType = string.Empty;
     [ObservableProperty] private bool _previewImages = true;
+    [ObservableProperty] private bool _removeFurniture;
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _canInstall = true;
 

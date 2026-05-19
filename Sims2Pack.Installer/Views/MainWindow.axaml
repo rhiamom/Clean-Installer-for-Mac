@@ -1,63 +1,142 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Sims2Pack.Installer.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="660"
         x:Class="Sims2Pack.Installer.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding WindowTitle}"
-        Width="560" Height="640"
-        MinWidth="480" MinHeight="520">
-    <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto,Auto,Auto">
-        <!-- Header: type indicator + name -->
-        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Spacing="2">
-            <TextBlock Text="{Binding PackType}" FontWeight="Bold"
-                       Foreground="#2E5C8A" HorizontalAlignment="Center"/>
-            <TextBlock Text="{Binding PackName}" FontSize="18" FontWeight="Bold"
-                       Foreground="#2E5C8A" HorizontalAlignment="Center"/>
-        </StackPanel>
+        Width="1200" Height="660"
+        MinWidth="800" MinHeight="500">
 
-        <!-- Preview toggle -->
-        <CheckBox Grid.Row="1" Content="Preview images"
-                  IsChecked="{Binding PreviewImages}" Margin="0,12,0,8"/>
+    <Grid Margin="12" RowDefinitions="Auto,*,Auto,Auto,Auto">
 
-        <!-- File list -->
-        <Border Grid.Row="2" BorderBrush="#888" BorderThickness="1">
-            <ListBox ItemsSource="{Binding Items}"
-                     SelectedItem="{Binding SelectedItem}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:PackageItemViewModel">
-                        <Border Background="{Binding BackgroundBrush}" Padding="4,2">
-                            <Grid ColumnDefinitions="Auto,*,160">
-                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Text="{Binding TypeName}" VerticalAlignment="Center"
-                                           Foreground="#555"/>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+        <Border Grid.Row="0"
+                Background="White"
+                BorderBrush="#C7D2E0"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="14,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+
+                <!-- TODO(catherine): drop the Sims 2 plumbob logo asset in
+                     Assets/ as e.g. sims2-logo.png, then replace this Border
+                     with <Image Source="/Assets/sims2-logo.png"/>. -->
+                <Border Grid.Column="0"
+                        Width="72" Height="72"
+                        Background="#EFEFEF"
+                        BorderBrush="#C7D2E0"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        Margin="0,0,12,0"/>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="{Binding PackName}"
+                               FontSize="20"
+                               FontWeight="SemiBold"
+                               Foreground="#2E5C8A"/>
+                    <TextBlock Text="{Binding PackType}"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="#2E5C8A"/>
+                    <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,6,0,0">
+                        <CheckBox Content="Preview images"
+                                  IsChecked="{Binding PreviewImages}"
+                                  Foreground="#2E5C8A"/>
+                        <CheckBox Content="Remove furniture"
+                                  IsChecked="{Binding RemoveFurniture}"
+                                  Foreground="#2E5C8A"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="10"
+                            VerticalAlignment="Bottom">
+                    <Image Source="/Assets/install-mode-everything.bmp"
+                           Width="28" Height="28" ToolTip.Tip="Install everything"/>
+                    <Image Source="/Assets/install-mode-house.bmp"
+                           Width="28" Height="28" ToolTip.Tip="Install house only"/>
+                    <Image Source="/Assets/install-mode-house-and-family.bmp"
+                           Width="28" Height="28" ToolTip.Tip="Install house and family"/>
+                    <Image Source="/Assets/install-mode-house-without-hacks.bmp"
+                           Width="28" Height="28" ToolTip.Tip="Install house without hacks"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
-        <!-- Version / Author panel -->
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,8,0,0">
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="Version" Foreground="#2E5C8A" Margin="0,0,12,2"/>
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedVersion}"/>
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="Author" Foreground="#2E5C8A" Margin="0,0,12,0"/>
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedAuthor}"/>
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Items}"
+                  SelectedItem="{Binding SelectedItem}"
+                  AutoGenerateColumns="False"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="True"
+                  Margin="0,10,0,0">
+            <DataGrid.Styles>
+                <Style x:DataType="vm:PackageItemViewModel" Selector="DataGridRow">
+                    <Setter Property="Background" Value="{Binding BackgroundBrush}"/>
+                </Style>
+            </DataGrid.Styles>
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected}" Width="32"/>
+                <DataGridTextColumn Header="Name"     Binding="{Binding Name}"     Width="320"/>
+                <DataGridTextColumn Header="Type"     Binding="{Binding TypeName}" Width="160"/>
+                <DataGridTextColumn Header="MD5"      Binding="{Binding Md5}"      Width="200"/>
+                <DataGridTextColumn Header="FileName" Binding="{Binding FileName}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Border Grid.Row="2"
+                BorderBrush="#C7D2E0"
+                BorderThickness="0,1,0,1"
+                Padding="8,12">
+            <Grid ColumnDefinitions="220,*" Height="80">
+                <StackPanel Grid.Column="0" Spacing="14" VerticalAlignment="Top">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Version" Foreground="#2E5C8A" Width="70"/>
+                        <TextBlock Text="{Binding SelectedVersion}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Author" Foreground="#2E5C8A" Width="70"/>
+                        <TextBlock Text="{Binding SelectedAuthor}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="3"
+                   Text="{Binding StatusMessage}"
+                   Margin="0,8,0,0"
+                   Foreground="#666"
+                   FontStyle="Italic"/>
+
+        <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,10,0,0">
+            <Button Grid.Column="0"
+                    Content="Update"
+                    Command="{Binding UpdateCommand}"
+                    Padding="18,6"/>
+            <Button Grid.Column="2"
+                    Content="Save As..."
+                    Command="{Binding SaveAsCommand}"
+                    Padding="18,6"
+                    Margin="6,0"/>
+            <Button Grid.Column="3"
+                    Content="Install"
+                    Command="{Binding InstallCommand}"
+                    IsEnabled="{Binding CanInstall}"
+                    IsDefault="True"
+                    Padding="18,6"
+                    Margin="6,0"
+                    Classes="accent"/>
+            <Button Grid.Column="4"
+                    Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    IsCancel="True"
+                    Padding="18,6"
+                    Margin="6,0"/>
         </Grid>
-
-        <!-- Status -->
-        <TextBlock Grid.Row="4" Text="{Binding StatusMessage}" Margin="0,8,0,0"
-                   Foreground="#666" FontStyle="Italic"/>
-
-        <!-- Buttons -->
-        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right"
-                    Spacing="8" Margin="0,12,0,0">
-            <Button Content="Update" Command="{Binding UpdateCommand}"/>
-            <Button Content="Save As..." Command="{Binding SaveAsCommand}"/>
-            <Button Content="Install" Command="{Binding InstallCommand}"
-                    IsEnabled="{Binding CanInstall}" IsDefault="True"/>
-            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True"/>
-        </StackPanel>
     </Grid>
 </Window>

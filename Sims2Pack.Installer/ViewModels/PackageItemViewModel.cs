@@ -26,6 +26,8 @@ public partial class PackageItemViewModel : ObservableObject
 
     public string Name => Package.info?.name ?? System.IO.Path.GetFileNameWithoutExtension(Package.fileName);
     public string TypeName => Package.DisplayTypeName;
+    public string Md5 => Package.md5 ?? string.Empty;
+    public string FileName => Package.fileName ?? string.Empty;
     public string Version => Package.info?.version ?? string.Empty;
     public string Author  => Package.info?.author  ?? string.Empty;
     public string Description => Package.info?.description ?? string.Empty;

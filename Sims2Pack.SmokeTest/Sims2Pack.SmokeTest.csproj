@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Sims2Pack.SmokeTest</AssemblyName>
+    <RootNamespace>Sims2Pack.SmokeTest</RootNamespace>
+    <Nullable>disable</Nullable>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Filetypes\Filetypes.csproj" />
+    <ProjectReference Include="..\SimsDirectories\SimsDirectories.csproj" />
+    <!-- The Core/* files live inside the Avalonia project; reference its
+         assembly so the smoke test can poke at the legacy model layer
+         without dragging in Avalonia. -->
+    <ProjectReference Include="..\Sims2Pack.Installer\Sims2Pack.Installer.csproj" />
+  </ItemGroup>
+</Project>

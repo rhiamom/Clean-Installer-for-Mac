@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>SimsDirectories</AssemblyName>
+    <RootNamespace>S2</RootNamespace>
+  </PropertyGroup>
+</Project>

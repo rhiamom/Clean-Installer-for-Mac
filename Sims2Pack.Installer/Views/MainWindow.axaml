@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Sims2Pack.Installer.ViewModels"
+        x:Class="Sims2Pack.Installer.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding WindowTitle}"
+        Width="560" Height="640"
+        MinWidth="480" MinHeight="520">
+    <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto,Auto,Auto">
+        <!-- Header: type indicator + name -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Spacing="2">
+            <TextBlock Text="{Binding PackType}" FontWeight="Bold"
+                       Foreground="#2E5C8A" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding PackName}" FontSize="18" FontWeight="Bold"
+                       Foreground="#2E5C8A" HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Preview toggle -->
+        <CheckBox Grid.Row="1" Content="Preview images"
+                  IsChecked="{Binding PreviewImages}" Margin="0,12,0,8"/>
+
+        <!-- File list -->
+        <Border Grid.Row="2" BorderBrush="#888" BorderThickness="1">
+            <ListBox ItemsSource="{Binding Items}"
+                     SelectedItem="{Binding SelectedItem}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PackageItemViewModel">
+                        <Border Background="{Binding BackgroundBrush}" Padding="4,2">
+                            <Grid ColumnDefinitions="Auto,*,160">
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" Margin="0,0,8,0"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding TypeName}" VerticalAlignment="Center"
+                                           Foreground="#555"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- Version / Author panel -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,8,0,0">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Version" Foreground="#2E5C8A" Margin="0,0,12,2"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedVersion}"/>
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Author" Foreground="#2E5C8A" Margin="0,0,12,0"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedAuthor}"/>
+        </Grid>
+
+        <!-- Status -->
+        <TextBlock Grid.Row="4" Text="{Binding StatusMessage}" Margin="0,8,0,0"
+                   Foreground="#666" FontStyle="Italic"/>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Spacing="8" Margin="0,12,0,0">
+            <Button Content="Update" Command="{Binding UpdateCommand}"/>
+            <Button Content="Save As..." Command="{Binding SaveAsCommand}"/>
+            <Button Content="Install" Command="{Binding InstallCommand}"
+                    IsEnabled="{Binding CanInstall}" IsDefault="True"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

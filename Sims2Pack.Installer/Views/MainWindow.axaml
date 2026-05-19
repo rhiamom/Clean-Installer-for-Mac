@@ -20,16 +20,15 @@
                 Padding="14,10">
             <Grid ColumnDefinitions="Auto,*,Auto">
 
-                <!-- TODO(catherine): drop the Sims 2 plumbob logo asset in
-                     Assets/ as e.g. sims2-logo.png, then replace this Border
-                     with <Image Source="/Assets/sims2-logo.png"/>. -->
-                <Border Grid.Column="0"
-                        Width="72" Height="72"
-                        Background="#EFEFEF"
-                        BorderBrush="#C7D2E0"
-                        BorderThickness="1"
-                        CornerRadius="3"
-                        Margin="0,0,12,0"/>
+                <!-- Original Sims2Pack Installer icon (misdocs.ico, 16×16).
+                     Nearest-neighbor scaling keeps the upscaled icon crisp/
+                     intentionally-pixelated rather than blurry. Swap in a
+                     higher-res PNG (plumbob etc.) when available. -->
+                <Image Grid.Column="0"
+                       Source="/Assets/sims2pack-icon.ico"
+                       Width="48" Height="48"
+                       Margin="0,0,12,0"
+                       RenderOptions.BitmapInterpolationMode="None"/>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                     <TextBlock Text="{Binding PackName}"

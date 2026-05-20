@@ -1,4 +1,6 @@
+using System.IO;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Sims2Pack_Installer;
 
@@ -31,6 +33,27 @@ public partial class PackageItemViewModel : ObservableObject
     public string Version => Package.info?.version ?? string.Empty;
     public string Author  => Package.info?.author  ?? string.Empty;
     public string Description => Package.info?.description ?? string.Empty;
+
+    private Bitmap? _previewImage;
+    private bool _previewImageLoaded;
+    public Bitmap? PreviewImage
+    {
+        get
+        {
+            if (_previewImageLoaded) return _previewImage;
+            _previewImageLoaded = true;
+            if (Package.images is null || Package.images.Count == 0) return null;
+            try
+            {
+                _previewImage = new Bitmap(new MemoryStream(Package.images[0]));
+            }
+            catch
+            {
+                _previewImage = null;
+            }
+            return _previewImage;
+        }
+    }
 
     public IBrush BackgroundBrush =>
         Package.IsOverwriting      ? OverwriteBrush  :

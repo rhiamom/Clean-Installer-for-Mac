@@ -26,6 +26,7 @@
 using System;
 using System.IO;
 using System.Collections;
+using System.Collections.Generic;
 using DatGen.Types.TS2;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -83,7 +84,9 @@ namespace Sims2Pack_Installer
         public int offset, size;
 
         public bool enabled, duplicated;
-        public ArrayList images;
+        // Raw JPEG/PNG bytes of preview pictures, decoded UI-side by Avalonia
+        // (System.Drawing.Bitmap doesn't reliably work on non-Windows .NET 8).
+        public List<byte[]> images;
         public ArrayList textures;
 
         #endregion
@@ -161,7 +164,7 @@ namespace Sims2Pack_Installer
         private void ReadPackage(byte[] contents)
         {
 
-            images      = new ArrayList();
+            images      = new List<byte[]>();
             textures    = new ArrayList();
             tooltip = "Package: " + Path.GetFileName(fileName);
 
@@ -244,29 +247,22 @@ namespace Sims2Pack_Installer
                         iDefaultReplacement++;
                         break;
 
-                        // Image
+                        // Image — preview picture for the pack (JPEG bytes).
+                        // Stored as raw bytes; the UI decodes via Avalonia.
                     case (uint)Types.Image:
                     case (uint) Types.JPG:
-                        TS2Image image = new TS2Image();
-                        image.Load(entries[i].RawData);
-                        if (image.Image != null)
+                        byte[] rawImage = entries[i].RawData;
+                        if (rawImage != null && rawImage.Length > 0)
                         {
                             if ((entries[i].InstanceID == 0x35CA0002)   // Main picture for Lot
                             /* || (entries[i].InstanceID == 0x6CD85218) */)  // Main picture for Family
                             {
                                 // For lots and families, we need the main picture to be first in the list.
                                 // Occupied lots will be one of the two main pictures.
-                                ArrayList clone = new ArrayList();
-                                clone.Add(image.Image);
-                                for (int j = 0; j < images.Count; j++)
-                                {
-                                    Object temp = images[j];
-                                    clone.Add(temp);
-                                }
-                                images = clone;
+                                images.Insert(0, rawImage);
                             }
                             else
-                                images.Add(image.Image);
+                                images.Add(rawImage);
                         }
                         break;
 

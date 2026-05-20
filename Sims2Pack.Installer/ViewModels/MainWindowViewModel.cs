@@ -90,6 +90,7 @@ public partial class MainWindowViewModel : ObservableObject
                 OnPropertyChanged(nameof(SelectedVersion));
                 OnPropertyChanged(nameof(SelectedAuthor));
                 OnPropertyChanged(nameof(SelectedDescription));
+                OnPropertyChanged(nameof(SelectedPreviewImage));
             }
         }
     }
@@ -97,6 +98,7 @@ public partial class MainWindowViewModel : ObservableObject
     public string SelectedVersion => _selectedItem?.Version ?? string.Empty;
     public string SelectedAuthor  => _selectedItem?.Author  ?? string.Empty;
     public string SelectedDescription => _selectedItem?.Description ?? string.Empty;
+    public Avalonia.Media.Imaging.Bitmap? SelectedPreviewImage => _selectedItem?.PreviewImage;
 
     [RelayCommand]
     private void Install()

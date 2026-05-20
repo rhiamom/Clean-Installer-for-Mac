@@ -156,6 +156,15 @@
                         <TextBlock Text="{Binding SelectedAuthor}"/>
                     </StackPanel>
                 </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Top">
+                    <TextBlock Text="Description" Foreground="#2E5C8A"/>
+                    <ScrollViewer MaxHeight="60"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding SelectedDescription}"
+                                   TextWrapping="Wrap"/>
+                    </ScrollViewer>
+                </StackPanel>
             </Grid>
         </Border>
 

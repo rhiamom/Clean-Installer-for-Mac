@@ -53,6 +53,30 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _canInstall = true;
 
+    private InstallMode _selectedInstallMode = InstallMode.Everything;
+    public InstallMode SelectedInstallMode
+    {
+        get => _selectedInstallMode;
+        set
+        {
+            if (SetProperty(ref _selectedInstallMode, value))
+            {
+                OnPropertyChanged(nameof(IsEverythingMode));
+                OnPropertyChanged(nameof(IsHouseOnlyMode));
+                OnPropertyChanged(nameof(IsHouseAndFamilyMode));
+                OnPropertyChanged(nameof(IsHouseWithoutHacksMode));
+            }
+        }
+    }
+
+    public bool IsEverythingMode        => SelectedInstallMode == InstallMode.Everything;
+    public bool IsHouseOnlyMode         => SelectedInstallMode == InstallMode.HouseOnly;
+    public bool IsHouseAndFamilyMode    => SelectedInstallMode == InstallMode.HouseAndFamily;
+    public bool IsHouseWithoutHacksMode => SelectedInstallMode == InstallMode.HouseWithoutHacks;
+
+    [RelayCommand]
+    private void SetInstallMode(InstallMode mode) => SelectedInstallMode = mode;
+
     public ObservableCollection<PackageItemViewModel> Items { get; }
 
     private PackageItemViewModel? _selectedItem;
@@ -87,9 +111,30 @@ public partial class MainWindowViewModel : ObservableObject
 
         bool ok;
         if (_pack.type == "Lot")
-            ok = _pack.InstallLotPackage(false);
+        {
+            // Only Everything maps cleanly to current Core behavior. The
+            // other three modes need Core support (family-aware extract,
+            // hack detection) before they can install — surface that as
+            // status instead of silently installing the wrong thing.
+            switch (SelectedInstallMode)
+            {
+                case InstallMode.Everything:
+                    ok = _pack.InstallLotPackage(RemoveFurniture);
+                    break;
+                case InstallMode.HouseOnly:
+                case InstallMode.HouseAndFamily:
+                case InstallMode.HouseWithoutHacks:
+                    StatusMessage = $"Install mode '{SelectedInstallMode}' is not yet wired up.";
+                    return;
+                default:
+                    ok = _pack.InstallLotPackage(RemoveFurniture);
+                    break;
+            }
+        }
         else
+        {
             ok = _pack.InstallNormalPackage(Sims2Directories.Downloads, true);
+        }
 
         StatusMessage = ok
             ? "Files successfully installed."

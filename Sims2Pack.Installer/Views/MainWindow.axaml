@@ -51,16 +51,51 @@
 
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
-                            Spacing="10"
+                            Spacing="6"
                             VerticalAlignment="Bottom">
-                    <Image Source="/Assets/install-mode-everything.bmp"
-                           Width="28" Height="28" ToolTip.Tip="Install everything"/>
-                    <Image Source="/Assets/install-mode-house.bmp"
-                           Width="28" Height="28" ToolTip.Tip="Install house only"/>
-                    <Image Source="/Assets/install-mode-house-and-family.bmp"
-                           Width="28" Height="28" ToolTip.Tip="Install house and family"/>
-                    <Image Source="/Assets/install-mode-house-without-hacks.bmp"
-                           Width="28" Height="28" ToolTip.Tip="Install house without hacks"/>
+                    <StackPanel.Styles>
+                        <Style Selector="ToggleButton.installMode">
+                            <Setter Property="Padding" Value="4"/>
+                            <Setter Property="MinWidth" Value="0"/>
+                            <Setter Property="MinHeight" Value="0"/>
+                        </Style>
+                    </StackPanel.Styles>
+                    <ToggleButton Classes="installMode"
+                                  IsChecked="{Binding IsEverythingMode, Mode=OneWay}"
+                                  Command="{Binding SetInstallModeCommand}"
+                                  CommandParameter="Everything"
+                                  ToolTip.Tip="Install everything">
+                        <Image Source="/Assets/install-mode-everything.bmp"
+                               Width="28" Height="28"
+                               RenderOptions.BitmapInterpolationMode="None"/>
+                    </ToggleButton>
+                    <ToggleButton Classes="installMode"
+                                  IsChecked="{Binding IsHouseOnlyMode, Mode=OneWay}"
+                                  Command="{Binding SetInstallModeCommand}"
+                                  CommandParameter="HouseOnly"
+                                  ToolTip.Tip="Install house only">
+                        <Image Source="/Assets/install-mode-house.bmp"
+                               Width="28" Height="28"
+                               RenderOptions.BitmapInterpolationMode="None"/>
+                    </ToggleButton>
+                    <ToggleButton Classes="installMode"
+                                  IsChecked="{Binding IsHouseAndFamilyMode, Mode=OneWay}"
+                                  Command="{Binding SetInstallModeCommand}"
+                                  CommandParameter="HouseAndFamily"
+                                  ToolTip.Tip="Install house and family">
+                        <Image Source="/Assets/install-mode-house-and-family.bmp"
+                               Width="28" Height="28"
+                               RenderOptions.BitmapInterpolationMode="None"/>
+                    </ToggleButton>
+                    <ToggleButton Classes="installMode"
+                                  IsChecked="{Binding IsHouseWithoutHacksMode, Mode=OneWay}"
+                                  Command="{Binding SetInstallModeCommand}"
+                                  CommandParameter="HouseWithoutHacks"
+                                  ToolTip.Tip="Install house without hacks">
+                        <Image Source="/Assets/install-mode-house-without-hacks.bmp"
+                               Width="28" Height="28"
+                               RenderOptions.BitmapInterpolationMode="None"/>
+                    </ToggleButton>
                 </StackPanel>
             </Grid>
         </Border>

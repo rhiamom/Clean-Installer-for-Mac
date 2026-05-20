@@ -55,46 +55,64 @@
                             VerticalAlignment="Bottom">
                     <StackPanel.Styles>
                         <Style Selector="ToggleButton.installMode">
-                            <Setter Property="Padding" Value="4"/>
+                            <Setter Property="Padding" Value="6,4"/>
                             <Setter Property="MinWidth" Value="0"/>
                             <Setter Property="MinHeight" Value="0"/>
+                        </Style>
+                        <Style Selector="ToggleButton.installMode TextBlock.caption">
+                            <Setter Property="FontSize" Value="10"/>
+                            <Setter Property="Foreground" Value="#2E5C8A"/>
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="0,2,0,0"/>
                         </Style>
                     </StackPanel.Styles>
                     <ToggleButton Classes="installMode"
                                   IsChecked="{Binding IsEverythingMode, Mode=OneWay}"
                                   Command="{Binding SetInstallModeCommand}"
-                                  CommandParameter="Everything"
-                                  ToolTip.Tip="Install everything">
-                        <Image Source="/Assets/install-mode-everything.bmp"
-                               Width="28" Height="28"
-                               RenderOptions.BitmapInterpolationMode="None"/>
+                                  CommandParameter="Everything">
+                        <StackPanel>
+                            <Image Source="/Assets/install-mode-everything.bmp"
+                                   Width="28" Height="28"
+                                   HorizontalAlignment="Center"
+                                   RenderOptions.BitmapInterpolationMode="None"/>
+                            <TextBlock Classes="caption" Text="Everything"/>
+                        </StackPanel>
                     </ToggleButton>
                     <ToggleButton Classes="installMode"
                                   IsChecked="{Binding IsHouseOnlyMode, Mode=OneWay}"
                                   Command="{Binding SetInstallModeCommand}"
-                                  CommandParameter="HouseOnly"
-                                  ToolTip.Tip="Install house only">
-                        <Image Source="/Assets/install-mode-house.bmp"
-                               Width="28" Height="28"
-                               RenderOptions.BitmapInterpolationMode="None"/>
+                                  CommandParameter="HouseOnly">
+                        <StackPanel>
+                            <Image Source="/Assets/install-mode-house.bmp"
+                                   Width="28" Height="28"
+                                   HorizontalAlignment="Center"
+                                   RenderOptions.BitmapInterpolationMode="None"/>
+                            <TextBlock Classes="caption" Text="House only"/>
+                        </StackPanel>
                     </ToggleButton>
                     <ToggleButton Classes="installMode"
                                   IsChecked="{Binding IsHouseAndFamilyMode, Mode=OneWay}"
                                   Command="{Binding SetInstallModeCommand}"
-                                  CommandParameter="HouseAndFamily"
-                                  ToolTip.Tip="Install house and family">
-                        <Image Source="/Assets/install-mode-house-and-family.bmp"
-                               Width="28" Height="28"
-                               RenderOptions.BitmapInterpolationMode="None"/>
+                                  CommandParameter="HouseAndFamily">
+                        <StackPanel>
+                            <Image Source="/Assets/install-mode-house-and-family.bmp"
+                                   Width="28" Height="28"
+                                   HorizontalAlignment="Center"
+                                   RenderOptions.BitmapInterpolationMode="None"/>
+                            <TextBlock Classes="caption" Text="House + family"/>
+                        </StackPanel>
                     </ToggleButton>
                     <ToggleButton Classes="installMode"
                                   IsChecked="{Binding IsHouseWithoutHacksMode, Mode=OneWay}"
                                   Command="{Binding SetInstallModeCommand}"
-                                  CommandParameter="HouseWithoutHacks"
-                                  ToolTip.Tip="Install house without hacks">
-                        <Image Source="/Assets/install-mode-house-without-hacks.bmp"
-                               Width="28" Height="28"
-                               RenderOptions.BitmapInterpolationMode="None"/>
+                                  CommandParameter="HouseWithoutHacks">
+                        <StackPanel>
+                            <Image Source="/Assets/install-mode-house-without-hacks.bmp"
+                                   Width="28" Height="28"
+                                   HorizontalAlignment="Center"
+                                   RenderOptions.BitmapInterpolationMode="None"/>
+                            <TextBlock Classes="caption" Text="Without hacks"/>
+                        </StackPanel>
                     </ToggleButton>
                 </StackPanel>
             </Grid>

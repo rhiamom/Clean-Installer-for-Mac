@@ -119,6 +119,7 @@
         </Border>
 
         <DataGrid Grid.Row="1"
+                  x:Name="ItemsGrid"
                   ItemsSource="{Binding Items}"
                   SelectedItem="{Binding SelectedItem}"
                   AutoGenerateColumns="False"
@@ -126,6 +127,7 @@
                   HeadersVisibility="Column"
                   CanUserResizeColumns="True"
                   CanUserSortColumns="True"
+                  Tapped="OnGridRowTapped"
                   Margin="0,10,0,0">
             <DataGrid.Styles>
                 <Style x:DataType="vm:PackageItemViewModel" Selector="DataGridRow">

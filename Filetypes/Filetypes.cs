@@ -369,6 +369,49 @@ namespace DatGen.Types.TS2
             get { return m_height; }
         }
 
+        /// <summary>
+        /// TXTR encoding type: 4 = DXT1 (no alpha), 5 = DXT3, 8 = DXT5.
+        /// Other values exist (raw/grayscale/LIFO) but only DXT1/3/5 are
+        /// supported by the BGRA preview path.
+        /// </summary>
+        public uint EncodingType => m_EncodingType;
+
+        /// <summary>
+        /// True if this mipmap references an external LIFO record rather
+        /// than carrying its own pixel data. LIFO-referenced mipmaps are
+        /// not supported by the current preview pipeline.
+        /// </summary>
+        public bool IsLifoReference => fReference;
+
+        /// <summary>
+        /// Decode this mipmap to a BGRA8888 byte buffer (length = Width*Height*4).
+        /// Returns null for unsupported encodings or LIFO references.
+        /// Only DXT1 (type 4), DXT3 (type 5) and DXT5 (type 8) are handled.
+        /// </summary>
+        public byte[] DecodeBgra()
+        {
+            if (fReference) return null;
+            int dxtFormat = m_EncodingType switch
+            {
+                4 => 1, // DXT1
+                5 => 3, // DXT3
+                8 => 5, // DXT5
+                _ => 0,
+            };
+            if (dxtFormat == 0) return null;
+
+            MemoryStream stream = new MemoryStream(txtr.RawData);
+            stream.Seek(m_offset, SeekOrigin.Begin);
+            try
+            {
+                return Util.ImageTools.DecodeDXTToBgra(stream, m_size, m_width, m_height, dxtFormat);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
 
         #endregion
     }
@@ -972,7 +1015,7 @@ namespace Util
             unsafe
             {
                 byte * p = (byte *)(void *)bmData.Scan0;
-                int[] Alpha = new int[16]; // FH: für Alpha reicht hier [4 * 4] !!!!
+                int[] Alpha = new int[16]; // FH: fï¿½r Alpha reicht hier [4 * 4] !!!!
                 for (int y = 0; y < bitmap.Height; y += 4) // DXT encodes 4x4 blocks of pixel
                 {
                     for (int x = 0; x < bitmap.Width; x += 4)
@@ -1220,6 +1263,141 @@ namespace Util
 //            bitmap.UnlockBits(bmData);
 //            return bitmap;
             #endregion
+        }
+
+
+        /// <summary>
+        /// DXT1/3/5 -> BGRA8888 byte buffer (length = width*height*4).
+        /// Mirrors DecodeDXT's block logic but writes B,G,R,A per pixel so
+        /// Avalonia WriteableBitmap can consume it without System.Drawing.
+        /// Alpha: DXT1 = always 0xFF; DXT3 = 4-bit per pixel; DXT5 = interpolated.
+        /// </summary>
+        public static byte[] DecodeDXTToBgra(Stream stream, uint size, int width, int height, int format)
+        {
+            BinaryReader reader = new BinaryReader(stream);
+            int stride = width * 4;
+            byte[] pixels = new byte[stride * height];
+            int[] Alpha = new int[16];
+
+            for (int y = 0; y < height; y += 4)
+            {
+                for (int x = 0; x < width; x += 4)
+                {
+                    // DXT3: 16 explicit 4-bit alpha values, scaled to 0..255
+                    if (format == 3)
+                    {
+                        long abits = reader.ReadInt64();
+                        for (int i = 0; i < 16; i++)
+                        {
+                            Alpha[i] = (int)((abits & 0xf) * 0x11);
+                            abits >>= 4;
+                        }
+                    }
+                    // DXT5: two endpoint alphas + 3-bit-per-pixel lookup table
+                    else if (format == 5)
+                    {
+                        int alpha1 = reader.ReadByte();
+                        int alpha2 = reader.ReadByte();
+                        long abits = (long)reader.ReadUInt32() | ((long)reader.ReadUInt16() << 32);
+                        int[] alphas = new int[8];
+                        alphas[0] = alpha1;
+                        alphas[1] = alpha2;
+                        if (alpha1 > alpha2)
+                        {
+                            alphas[2] = (6 * alpha1 + alpha2) / 7;
+                            alphas[3] = (5 * alpha1 + 2 * alpha2) / 7;
+                            alphas[4] = (4 * alpha1 + 3 * alpha2) / 7;
+                            alphas[5] = (3 * alpha1 + 4 * alpha2) / 7;
+                            alphas[6] = (2 * alpha1 + 5 * alpha2) / 7;
+                            alphas[7] = (alpha1 + 6 * alpha2) / 7;
+                        }
+                        else
+                        {
+                            alphas[2] = (4 * alpha1 + alpha2) / 5;
+                            alphas[3] = (3 * alpha1 + 2 * alpha2) / 5;
+                            alphas[4] = (2 * alpha1 + 3 * alpha2) / 5;
+                            alphas[5] = (1 * alpha1 + 4 * alpha2) / 5;
+                            alphas[6] = 0;
+                            alphas[7] = 0xff;
+                        }
+                        for (int i = 0; i < 16; i++)
+                        {
+                            Alpha[i] = alphas[abits & 7];
+                            abits >>= 3;
+                        }
+                    }
+
+                    uint c1packed16 = ((uint)reader.ReadByte()) | ((uint)reader.ReadByte() << 8);
+                    uint c2packed16 = ((uint)reader.ReadByte()) | ((uint)reader.ReadByte() << 8);
+
+                    uint color1r = (c1packed16 >> 8) & 0xF8;
+                    uint color1g = (c1packed16 >> 3) & 0xFC;
+                    uint color1b = (c1packed16 << 3) & 0xF8;
+
+                    uint color2r = (c2packed16 >> 8) & 0xF8;
+                    uint color2g = (c2packed16 >> 3) & 0xFC;
+                    uint color2b = (c2packed16 << 3) & 0xF8;
+
+                    uint[] colors = new uint[4];
+                    colors[0] = (color1r << 16) | (color1g << 8) | color1b;
+                    colors[1] = (color2r << 16) | (color2g << 8) | color2b;
+
+                    // For DXT1 with c1<=c2, the third slot is the midpoint and
+                    // the fourth slot is transparent black. For DXT3/5 the alpha
+                    // channel carries opacity, so the regular DXT1 transparency
+                    // rule is ignored; we always use the 4-color mode.
+                    if (format == 1 && c1packed16 <= c2packed16)
+                    {
+                        uint mr = (color1r + color2r) / 2;
+                        uint mg = (color1g + color2g) / 2;
+                        uint mb = (color1b + color2b) / 2;
+                        colors[2] = (mr << 16) | (mg << 8) | mb;
+                        colors[3] = 0; // transparent black
+                    }
+                    else
+                    {
+                        uint colorr = (((color1r << 1) + color2r) / 3) & 0xFF;
+                        uint colorg = (((color1g << 1) + color2g) / 3) & 0xFF;
+                        uint colorb = (((color1b << 1) + color2b) / 3) & 0xFF;
+                        colors[2] = (colorr << 16) | (colorg << 8) | colorb;
+
+                        colorr = (((color2r << 1) + color1r) / 3) & 0xFF;
+                        colorg = (((color2g << 1) + color1g) / 3) & 0xFF;
+                        colorb = (((color2b << 1) + color1b) / 3) & 0xFF;
+                        colors[3] = (colorr << 16) | (colorg << 8) | colorb;
+                    }
+
+                    int bits1 = reader.ReadByte() + (reader.ReadByte() << 8) + (reader.ReadByte() << 16) + (reader.ReadByte() << 24);
+
+                    for (int by = 0; by < 4; by++)
+                    {
+                        for (int bx = 0; bx < 4; bx++)
+                        {
+                            int px = x + bx;
+                            int py = y + by;
+                            if (px >= width || py >= height) continue;
+
+                            int code = (bits1 >> (((by << 2) + bx) << 1)) & 0x3;
+                            uint c = colors[code];
+                            int dst = py * stride + px * 4;
+                            pixels[dst]     = (byte)c;          // B
+                            pixels[dst + 1] = (byte)(c >> 8);   // G
+                            pixels[dst + 2] = (byte)(c >> 16);  // R
+
+                            byte a;
+                            if (format == 3 || format == 5)
+                                a = (byte)Alpha[(by << 2) + bx];
+                            else if (format == 1 && c1packed16 <= c2packed16 && code == 3)
+                                a = 0; // DXT1 punch-through transparent
+                            else
+                                a = 0xFF;
+                            pixels[dst + 3] = a;
+                        }
+                    }
+                }
+            }
+
+            return pixels;
         }
 
 

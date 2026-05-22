@@ -232,7 +232,10 @@ namespace Sims2Pack_Installer
                     case (uint)Types.Texture:
                         //PackageEntry ent = entries[i];
                         entries[i].FileName = (instModeFileName != null) ? instModeFileName : fileName;
-                        entries[i].RawData = null;
+                        // Keep RawData so the UI can decode DXT1/3/5 mipmaps
+                        // for the texture preview popup. The install flow
+                        // re-reads from disk via FileName, so this only costs
+                        // RAM while a pack is open in the viewer.
                         textures.Add(entries[i]);
 
                         // ToDo: would be nice if we could specify the type of default replacement:

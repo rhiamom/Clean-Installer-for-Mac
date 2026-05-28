@@ -88,6 +88,10 @@ namespace Sims2Pack_Installer
         // (System.Drawing.Bitmap doesn't reliably work on non-Windows .NET 8).
         public List<byte[]> images;
         public ArrayList textures;
+        // TXMT (material definition) entries — used by the texture preview to
+        // resolve repositoried recolors that reference textures by name in
+        // a sibling package.
+        public ArrayList txmts;
 
         #endregion
 
@@ -166,6 +170,7 @@ namespace Sims2Pack_Installer
 
             images      = new List<byte[]>();
             textures    = new ArrayList();
+            txmts       = new ArrayList();
             tooltip = "Package: " + Path.GetFileName(fileName);
 
             // string tooltipAdd = "";
@@ -223,6 +228,13 @@ namespace Sims2Pack_Installer
                 // Necessary evil or maybe not :P
                 entries[i].mOffset = (uint)offset;
 
+                // Per-entry try/catch: one bad record (e.g. an EXMP whose
+                // RawData isn't valid XML) used to throw out of the loop and
+                // skip every subsequent entry, including TXTR records the
+                // texture preview needs. Now one bad record just gets logged
+                // and we move on.
+                try
+                {
                 #region recognition loop
                 #region switch
                 switch(entries[i].TypeID)
@@ -242,6 +254,13 @@ namespace Sims2Pack_Installer
                         // xyBody => clothing
                         // easel-painting => painting
                         iDefaultReplacement++;
+                        break;
+
+                    // TXMT: Material definition. Captured so the repositoried-
+                    // recolor preview path can resolve a recolor's referenced
+                    // base TXTR in another package.
+                    case 0x49596978:
+                        txmts.Add(entries[i]);
                         break;
 
                     case (uint)Types.GeometricData: // GMDC: Geometric Data Container
@@ -423,6 +442,13 @@ namespace Sims2Pack_Installer
                 }
 
                 #endregion
+                }
+                catch (System.Exception entryEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        "ReadPackage entry " + i + " (type 0x" + entries[i].TypeID.ToString("X8") +
+                        ") failed: " + entryEx.GetType().Name + ": " + entryEx.Message);
+                }
 
             }
 

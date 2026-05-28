@@ -58,6 +58,15 @@
                             <Setter Property="Padding" Value="6,4"/>
                             <Setter Property="MinWidth" Value="0"/>
                             <Setter Property="MinHeight" Value="0"/>
+                            <Setter Property="BorderThickness" Value="2"/>
+                            <Setter Property="BorderBrush" Value="Transparent"/>
+                        </Style>
+                        <Style Selector="ToggleButton.installMode:checked">
+                            <Setter Property="BorderBrush" Value="#2E5C8A"/>
+                            <Setter Property="Background" Value="#DCE7F2"/>
+                        </Style>
+                        <Style Selector="ToggleButton.installMode:checked /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#DCE7F2"/>
                         </Style>
                         <Style Selector="ToggleButton.installMode TextBlock.caption">
                             <Setter Property="FontSize" Value="10"/>
@@ -69,7 +78,7 @@
                     <ToggleButton Classes="installMode"
                                   IsChecked="{Binding IsEverythingMode, Mode=OneWay}"
                                   Command="{Binding SetInstallModeCommand}"
-                                  CommandParameter="Everything">
+                                  CommandParameter="{x:Static vm:InstallMode.Everything}">
                         <StackPanel>
                             <Image Source="/Assets/install-mode-everything.bmp"
                                    Width="28" Height="28"
@@ -81,7 +90,7 @@
                     <ToggleButton Classes="installMode"
                                   IsChecked="{Binding IsHouseOnlyMode, Mode=OneWay}"
                                   Command="{Binding SetInstallModeCommand}"
-                                  CommandParameter="HouseOnly">
+                                  CommandParameter="{x:Static vm:InstallMode.HouseOnly}">
                         <StackPanel>
                             <Image Source="/Assets/install-mode-house.bmp"
                                    Width="28" Height="28"
@@ -93,7 +102,7 @@
                     <ToggleButton Classes="installMode"
                                   IsChecked="{Binding IsHouseAndFamilyMode, Mode=OneWay}"
                                   Command="{Binding SetInstallModeCommand}"
-                                  CommandParameter="HouseAndFamily">
+                                  CommandParameter="{x:Static vm:InstallMode.HouseAndFamily}">
                         <StackPanel>
                             <Image Source="/Assets/install-mode-house-and-family.bmp"
                                    Width="28" Height="28"
@@ -105,7 +114,7 @@
                     <ToggleButton Classes="installMode"
                                   IsChecked="{Binding IsHouseWithoutHacksMode, Mode=OneWay}"
                                   Command="{Binding SetInstallModeCommand}"
-                                  CommandParameter="HouseWithoutHacks">
+                                  CommandParameter="{x:Static vm:InstallMode.HouseWithoutHacks}">
                         <StackPanel>
                             <Image Source="/Assets/install-mode-house-without-hacks.bmp"
                                    Width="28" Height="28"

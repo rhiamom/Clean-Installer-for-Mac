@@ -166,7 +166,8 @@ namespace Sims2Pack_Installer
             {
                 if (dataControl.files[i].enabled)
                 {
-                    if ((dataControl.files[i].info.installToTeleport) || bIncludeAllFiles)
+                    bool installToTeleport = dataControl.files[i].info?.installToTeleport ?? false;
+                    if (installToTeleport || bIncludeAllFiles)
                     {
                         string sFileName = System.Web.HttpUtility.HtmlEncode(dataControl.files[i].fileName);
                         xml += "  <PackagedFile>\n" +
@@ -207,7 +208,21 @@ namespace Sims2Pack_Installer
 
                     dataControl.files[i].instModeFileName = dataControl.fileName;
 
-                    dataControl.files[i].Complete(byteArray);
+                    // Per-item try/catch: one bad item (e.g. legacy EXMP record
+                    // that fails XML parse) used to abort the whole loop and
+                    // leave subsequent items with null .info, which then NRE'd
+                    // in GenerateXML on install. Now one bad item just leaves
+                    // its own .info as a default PackageInfo.
+                    try
+                    {
+                        dataControl.files[i].Complete(byteArray);
+                    }
+                    catch (System.Exception itemEx)
+                    {
+                        Debug.WriteLine("Complete failed on item " + i + ": " + itemEx.GetType().Name + ": " + itemEx.Message);
+                        if (dataControl.files[i].info == null)
+                            dataControl.files[i].info = new S2CIPackageInfo("");
+                    }
                 }
 
                 dbpf.Close();
@@ -297,7 +312,7 @@ namespace Sims2Pack_Installer
             }
             catch(Exception e)
             {
-                Debug.WriteLine(e.Message);
+                Debug.WriteLine(e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
             }
 
         }
@@ -335,6 +350,146 @@ namespace Sims2Pack_Installer
         #endregion
 
         #region public_methods
+
+        // HARD BLOCK: Mac never got these EPs/SPs, and unlike the soft-warn
+        // tier below, no community extraction makes them playable. Game
+        // crashes hard when entering a lot that needs them.
+        // Stuff packs don't bump lot uVersion, so M&G is description-only.
+        private static readonly string[] HardBlockDescriptionPatterns = new[]
+        {
+            "Free Time", "FreeTime",
+            "Apartment Life",
+            "Mansion and Garden", "Mansions and Gardens",
+            "H&M Fashion", "Fashion",  // "Fashion" alone catches Legacy Collection's rename of H&M Fashion Stuff
+        };
+
+        // SOFT WARN: Huge Lunatic extracted standalone .package versions of
+        // the items from these four SPs. If the user has those extractions in
+        // Downloads, lots that reference them load fine; otherwise the game
+        // crashes. We can't tell from the lot file alone, so we surface an
+        // "I have HL's extractions" override on the dialog.
+        private static readonly string[] SoftWarnDescriptionPatterns = new[]
+        {
+            "Kitchen and Bath", "Kitchen & Bath",
+            "IKEA",
+            "Celebration", "Celebrations",
+            "Teen Style",
+        };
+
+        public enum ContentTier { HardBlock, SoftWarn }
+
+        public struct ContentFlag
+        {
+            public S2CPackage Item;
+            public string Reason;
+            public ContentTier Tier;
+        }
+
+        /// <summary>
+        /// Walks currently-enabled items and returns any whose description or
+        /// (for Lot items) embedded engine-version byte indicates Sims 2
+        /// content not natively available on Mac. Hard-block items always
+        /// abort the install; soft-warn items can be overridden by the user
+        /// if they have Huge Lunatic's extractions installed.
+        /// </summary>
+        public System.Collections.Generic.List<ContentFlag> DetectWindowsOnlyContent()
+        {
+            var flags = new System.Collections.Generic.List<ContentFlag>();
+            foreach (S2CPackage item in dataControl.files)
+            {
+                if (!item.enabled) continue;
+
+                // Check across all description-ish fields the parser populates.
+                // item.description = from Sims2Pack XML per item; info.description
+                // = from recognition DB; info.version = pack-version string the
+                // game stamps in when the lot was saved.
+                string desc = (item.description ?? "") + " " + (item.info?.description ?? "") + " " + (item.info?.version ?? "");
+
+                string hardHit = MatchAny(desc, HardBlockDescriptionPatterns);
+                if (hardHit != null)
+                {
+                    flags.Add(new ContentFlag
+                    {
+                        Item = item,
+                        Reason = "Description mentions \"" + hardHit + "\"",
+                        Tier = ContentTier.HardBlock,
+                    });
+                    continue; // one flag per item
+                }
+
+                string softHit = MatchAny(desc, SoftWarnDescriptionPatterns);
+                if (softHit != null)
+                {
+                    flags.Add(new ContentFlag
+                    {
+                        Item = item,
+                        Reason = "Description mentions \"" + softHit + "\" (Huge Lunatic extraction?)",
+                        Tier = ContentTier.SoftWarn,
+                    });
+                    continue;
+                }
+
+                if (item.type == "Lot")
+                {
+                    int? uVer = TryReadLotUVersion(item);
+                    if (uVer.HasValue && (uVer.Value == 8 || uVer.Value >= 11))
+                    {
+                        string ep = uVer.Value switch
+                        {
+                            8  => "Free Time",
+                            11 => "Apartment Life",
+                            _  => "engine version " + uVer.Value,
+                        };
+                        flags.Add(new ContentFlag
+                        {
+                            Item = item,
+                            Reason = "Lot requires " + ep,
+                            Tier = ContentTier.HardBlock,
+                        });
+                    }
+                }
+            }
+            return flags;
+        }
+
+        private static string MatchAny(string text, string[] patterns)
+        {
+            foreach (string p in patterns)
+                if (text.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return p;
+            return null;
+        }
+
+        private int? TryReadLotUVersion(S2CPackage item)
+        {
+            try
+            {
+                using var fs = new FileStream(dataControl.fileName, FileMode.Open, FileAccess.Read);
+                fs.Seek(item.offset, SeekOrigin.Begin);
+                var body = new byte[item.size];
+                int read = 0;
+                while (read < body.Length)
+                {
+                    int n = fs.Read(body, read, body.Length - read);
+                    if (n <= 0) break;
+                    read += n;
+                }
+
+                using var ms = new MemoryStream(body);
+                using var br = new BinaryReader(ms);
+                var pack = SimPe.Packages.File.LoadFromStream(br);
+                var pfd = pack.FindFile(0x6C589723, 0, 0xFFFFFFFF, 0);
+                if (pfd == null) return null;
+                byte[] lotBytes = pack.Read(pfd).UncompressedData;
+                // R_LOT layout: 64 zero bytes, then ushort uVersion.
+                if (lotBytes.Length < 66) return null;
+                return BitConverter.ToUInt16(lotBytes, 64);
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         public void SaveAs(string fileName)
         {
@@ -433,7 +588,9 @@ namespace Sims2Pack_Installer
 
                 targetFileName = Sims2Directories.Teleport + dataControl.files[0].crc + ".Sims2Import";
 
-                FileStream fsw = new FileStream(targetFileName, FileMode.CreateNew);
+                // FileMode.Create overwrites; reinstalling the same lot would
+                // otherwise throw on the leftover .Sims2Import file.
+                FileStream fsw = new FileStream(targetFileName, FileMode.Create);
                 BinaryWriter writer = new BinaryWriter(fsw);
 
                 string t1 = "Sims2 Packager 1.0";
@@ -515,7 +672,7 @@ namespace Sims2Pack_Installer
             }
             catch(System.Exception e)
             {
-                Debug.WriteLine(e.Message);
+                Debug.WriteLine(e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
                 return false;
             }
             return true;
@@ -580,7 +737,7 @@ namespace Sims2Pack_Installer
             }
             catch (System.Exception e)
             {
-                Debug.WriteLine(e.Message);
+                Debug.WriteLine(e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
                 return false;
             }
             return true;
@@ -611,7 +768,9 @@ namespace Sims2Pack_Installer
                 {
                     targetFileName = folder + dataControl.files[0].crc + ".Sims2Import";
 
-                    FileStream fsw = new FileStream(targetFileName, FileMode.CreateNew);
+                    // FileMode.Create overwrites; reinstall must not throw on
+                    // a leftover .Sims2Import.
+                    FileStream fsw = new FileStream(targetFileName, FileMode.Create);
                     BinaryWriter writer = new BinaryWriter(fsw);
 
                     string t1 = "Sims2 Packager 1.0";
@@ -697,7 +856,7 @@ namespace Sims2Pack_Installer
             }
             catch(System.Exception e)
             {
-                Debug.WriteLine(e.Message);
+                Debug.WriteLine(e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
                 return false;
             }
             return true;

@@ -19,11 +19,15 @@
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="$(SimPeRepo)\SimPE.Helper\SimPE.Helper.csproj" />
-    <ProjectReference Include="$(SimPeRepo)\SimPE.Interfaces\SimPE.Interfaces.csproj" />
-    <ProjectReference Include="$(SimPeRepo)\SimPE.Packages\SimPE.Packages.csproj" />
-  </ItemGroup>
+  <!--
+    The SimPe.* / DatGen.* namespace surface used by the Clean Installer is
+    vendored locally in _SimPeStubs.cs and DatGenStubs.cs. Those stubs are
+    cross-platform (net8.0) and avoid the WinForms / net8.0-windows TFM of
+    SimPE-Fixed, so the installer builds natively on macOS. If the optional
+    Remove Furniture install path is ever wired up, port the real DBPF
+    parser (SimPE.Packages.GeneratableFile and friends) into this assembly.
+  -->
+
 
   <ItemGroup>
     <Compile Remove="bin\**" />

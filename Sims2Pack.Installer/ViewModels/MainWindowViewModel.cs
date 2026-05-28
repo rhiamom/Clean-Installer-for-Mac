@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using S2;
+using Sims2Pack.Installer.Views;
 using Sims2Pack_Installer;
 
 namespace Sims2Pack.Installer.ViewModels;
@@ -32,7 +36,7 @@ public partial class MainWindowViewModel : ObservableObject
             PackType = _pack.type;
 
             foreach (S2CPackage p in _pack.Items)
-                Items.Add(new PackageItemViewModel(p));
+                Items.Add(new PackageItemViewModel(p, _pack));
 
             if (Items.Count > 0)
                 SelectedItem = Items[0];
@@ -65,6 +69,7 @@ public partial class MainWindowViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsHouseOnlyMode));
                 OnPropertyChanged(nameof(IsHouseAndFamilyMode));
                 OnPropertyChanged(nameof(IsHouseWithoutHacksMode));
+                ApplyInstallModeSelection();
             }
         }
     }
@@ -76,6 +81,24 @@ public partial class MainWindowViewModel : ObservableObject
 
     [RelayCommand]
     private void SetInstallMode(InstallMode mode) => SelectedInstallMode = mode;
+
+    // Mirrors Mootilda's four pictureBox click handlers (WinForm.cs ~919-1016):
+    // the install-mode icons are bulk-selection helpers, not separate install
+    // code paths. They flip Package.enabled on every item; InstallLotPackage
+    // then skips items where !enabled.
+    private void ApplyInstallModeSelection()
+    {
+        foreach (var item in Items)
+        {
+            item.IsSelected = SelectedInstallMode switch
+            {
+                InstallMode.HouseOnly         => item.Package.type == "Lot",
+                InstallMode.HouseAndFamily    => item.Package.type is "Lot" or "Family" or "Person",
+                InstallMode.HouseWithoutHacks => !(item.Package.info?.overwriting ?? false),
+                _                             => true,
+            };
+        }
+    }
 
     public ObservableCollection<PackageItemViewModel> Items { get; }
 
@@ -101,7 +124,7 @@ public partial class MainWindowViewModel : ObservableObject
     public Avalonia.Media.Imaging.Bitmap? SelectedPreviewImage => _selectedItem?.PreviewImage;
 
     [RelayCommand]
-    private void Install()
+    private async Task Install()
     {
         if (_pack is null) return;
 
@@ -111,32 +134,59 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        bool ok;
-        if (_pack.type == "Lot")
+        // Safety check: detect items that reference Sims 2 EP/SP content
+        // not natively on Mac. Hard-block tier (FT/AL/M&G/H&M) always aborts;
+        // soft-warn tier (K&B/IKEA/Celebrations/Teen Style — extracted by
+        // Huge Lunatic into standalone packages) lets the user override if
+        // they have HL's extractions installed.
+        var flags = _pack.DetectWindowsOnlyContent();
+        if (flags.Count > 0)
         {
-            // Only Everything maps cleanly to current Core behavior. The
-            // other three modes need Core support (family-aware extract,
-            // hack detection) before they can install — surface that as
-            // status instead of silently installing the wrong thing.
-            switch (SelectedInstallMode)
+            var hardItems = new List<FlaggedItem>();
+            var softItems = new List<FlaggedItem>();
+            foreach (var f in flags)
             {
-                case InstallMode.Everything:
-                    ok = _pack.InstallLotPackage(RemoveFurniture);
-                    break;
-                case InstallMode.HouseOnly:
-                case InstallMode.HouseAndFamily:
-                case InstallMode.HouseWithoutHacks:
-                    StatusMessage = $"Install mode '{SelectedInstallMode}' is not yet wired up.";
+                var ui = new FlaggedItem
+                {
+                    Name   = f.Item.info?.name ?? Path.GetFileNameWithoutExtension(f.Item.fileName),
+                    Reason = f.Reason,
+                };
+                if (f.Tier == S2Sims2Pack.ContentTier.HardBlock) hardItems.Add(ui);
+                else                                             softItems.Add(ui);
+            }
+
+            if (Avalonia.Application.Current?.ApplicationLifetime
+                    is IClassicDesktopStyleApplicationLifetime desktop
+                && desktop.MainWindow is not null)
+            {
+                var dialog = new WindowsContentWarningDialog(hardItems, softItems);
+                var result = await dialog.ShowDialog<WindowsContentDialogResult>(desktop.MainWindow);
+                if (hardItems.Count > 0)
+                {
+                    StatusMessage = "Install blocked — pack requires Sims 2 content not available on Mac.";
                     return;
-                default:
-                    ok = _pack.InstallLotPackage(RemoveFurniture);
-                    break;
+                }
+                if (result != WindowsContentDialogResult.OverrideAccepted)
+                {
+                    StatusMessage = "Install cancelled.";
+                    return;
+                }
+                // Soft-warn override accepted — proceed.
+            }
+            else
+            {
+                // No window available somehow — fail safe by blocking.
+                StatusMessage = "Install blocked — Windows-only content detected.";
+                return;
             }
         }
-        else
-        {
-            ok = _pack.InstallNormalPackage(Sims2Directories.Downloads, true);
-        }
+
+        // Install-mode filtering happens via ApplyInstallModeSelection(),
+        // which has already flipped Package.enabled on each item per the
+        // selected mode. InstallLotPackage's loop skips !enabled items.
+        bool ok = _pack.type == "Lot"
+            ? _pack.InstallLotPackage(RemoveFurniture)
+            : _pack.InstallNormalPackage(Sims2Directories.Downloads, true);
 
         StatusMessage = ok
             ? "Files successfully installed."
@@ -144,8 +194,89 @@ public partial class MainWindowViewModel : ObservableObject
         CanInstall = false;
     }
 
-    [RelayCommand] private void SaveAs() { /* v1: pack creation deferred */ }
-    [RelayCommand] private void Update() { /* v1: recognition-DB update deferred */ }
+    // Mirrors Mootilda's buttonSave_Click (WinForm.cs ~662): show a save
+    // dialog, write the pack via S2Sims2Pack.SaveAs which only emits
+    // currently-enabled items, and atomically swap with a .bkp backup if the
+    // target already exists. Reload-after-save is skipped — we just update
+    // status and the displayed pack name.
+    [RelayCommand]
+    private async Task SaveAs()
+    {
+        if (_pack is null) return;
+
+        if (Avalonia.Application.Current?.ApplicationLifetime
+                is not IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow is null)
+        {
+            return;
+        }
+
+        var sims2PackType = new FilePickerFileType("Sims2Pack")
+        {
+            Patterns = new[] { "*.Sims2Pack" },
+        };
+
+        var picked = await desktop.MainWindow.StorageProvider.SaveFilePickerAsync(
+            new FilePickerSaveOptions
+            {
+                Title              = "Save As",
+                SuggestedFileName  = PackName,
+                DefaultExtension   = "Sims2Pack",
+                FileTypeChoices    = new[] { sims2PackType },
+            });
+        if (picked?.TryGetLocalPath() is not string targetPath) return;
+
+        // S2Sims2Pack.SaveAs uses FileMode.CreateNew, so it throws if the
+        // target exists. Mirror Mootilda's temp-then-swap dance.
+        try
+        {
+            if (File.Exists(targetPath))
+            {
+                string tempPath = Path.Combine(
+                    Path.GetDirectoryName(targetPath) ?? Path.GetTempPath(),
+                    Path.GetFileNameWithoutExtension(targetPath) + ".tmp.Sims2Pack");
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+
+                _pack.SaveAs(tempPath);
+
+                string backupPath = Path.ChangeExtension(targetPath, ".bkp");
+                if (File.Exists(backupPath)) File.Delete(backupPath);
+                File.Move(targetPath, backupPath);
+                File.Move(tempPath, targetPath);
+            }
+            else
+            {
+                _pack.SaveAs(targetPath);
+            }
+
+            PackName      = Path.GetFileNameWithoutExtension(targetPath);
+            StatusMessage = $"Saved to {targetPath}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Save failed: {ex.Message}";
+        }
+    }
+    // Mootilda's Update fetched the hack-recognition DB from a long-dead
+    // ModTheSims URL. Our version just opens the GitHub releases page in the
+    // user's default browser so they can grab a newer installer build.
+    [RelayCommand]
+    private void Update()
+    {
+        const string releasesUrl = "https://github.com/rhiamom/Clean-Installer-for-Mac/releases";
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName        = releasesUrl,
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not open browser: {ex.Message}";
+        }
+    }
 
     [RelayCommand]
     private void Cancel()

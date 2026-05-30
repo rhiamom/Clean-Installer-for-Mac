@@ -184,7 +184,16 @@ public partial class MainWindowViewModel : ObservableObject
         // Install-mode filtering happens via ApplyInstallModeSelection(),
         // which has already flipped Package.enabled on each item per the
         // selected mode. InstallLotPackage's loop skips !enabled items.
-        bool ok = _pack.type == "Lot"
+        //
+        // Lot and Sim packs both install through the Teleport-import path: the
+        // lot/sim record goes to Teleport as .Sims2Tmp with a .Sims2Import
+        // descriptor, and on its next launch the game moves it into
+        // Downloads/{crc}.package and registers it in ContentRegistry (verified
+        // to match Aspyr's own installer). Lots then appear in the lots/houses
+        // bin; downloaded Sims (BodyShop projects) appear in BodyShop. The
+        // bundled CC parts drop straight into Downloads. Everything else is
+        // loose CC and goes to Downloads directly.
+        bool ok = (_pack.type == "Lot" || _pack.type == "Sim")
             ? _pack.InstallLotPackage(RemoveFurniture)
             : _pack.InstallNormalPackage(Sims2Directories.Downloads, true);
 

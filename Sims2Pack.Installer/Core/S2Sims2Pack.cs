@@ -157,6 +157,34 @@ namespace Sims2Pack_Installer
         }
 
 
+        // A packaged file is either imported into the game (Lot / Family /
+        // Person / Sim) or dropped as loose custom content ("part"). Imported
+        // files go to the Teleport folder as .Sims2Tmp alongside a .Sims2Import
+        // descriptor; on its next launch the game moves them into
+        // Downloads/{crc}.package and registers them in ContentRegistry — the
+        // same end state Aspyr's own Package Installer produces, verified by
+        // diffing the user folder before/after an Aspyr install. A downloaded
+        // "Sim" pack is a BodyShop project, so the imported Sim then shows up
+        // in BodyShop (not the neighborhood family bin). CC parts go straight
+        // to Downloads as loose .package files.
+        //
+        // Inner <Type> values are mixed-case in the wild: lots use "Lot",
+        // packaged Sims use lowercase "sim", so match case-insensitively.
+        private static bool GoesToTeleport(S2CPackage f)
+        {
+            if (f.info != null && f.info.installToTeleport) return true;
+            switch ((f.type ?? "").ToLowerInvariant())
+            {
+                case "lot":
+                case "family":
+                case "person":
+                case "sim":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         private byte[] GenerateXML(bool bIncludeAllFiles)
         {
             string xml;
@@ -166,8 +194,10 @@ namespace Sims2Pack_Installer
             {
                 if (dataControl.files[i].enabled)
                 {
-                    bool installToTeleport = dataControl.files[i].info?.installToTeleport ?? false;
-                    if (installToTeleport || bIncludeAllFiles)
+                    // The import descriptor must list exactly the files written
+                    // to Teleport so the game knows what to pull in. SaveAs
+                    // (bIncludeAllFiles) re-emits every file instead.
+                    if (bIncludeAllFiles || GoesToTeleport(dataControl.files[i]))
                     {
                         string sFileName = System.Web.HttpUtility.HtmlEncode(dataControl.files[i].fileName);
                         xml += "  <PackagedFile>\n" +
@@ -586,22 +616,36 @@ namespace Sims2Pack_Installer
 
                 //Create import file
 
-                targetFileName = Sims2Directories.Teleport + dataControl.files[0].crc + ".Sims2Import";
+                // The descriptor is named after the first enabled file that
+                // actually goes to Teleport (the lot or the sim), not blindly
+                // files[0] — a Sim pack whose first entry is a CC part (a
+                // BodyShop-style pack with no "sim" record) would otherwise
+                // leave a stray .Sims2Import with no matching .Sims2Tmp.
+                S2CPackage importAnchor = null;
+                foreach (S2CPackage f in dataControl.files)
+                {
+                    if (f.enabled && GoesToTeleport(f)) { importAnchor = f; break; }
+                }
 
-                // FileMode.Create overwrites; reinstalling the same lot would
-                // otherwise throw on the leftover .Sims2Import file.
-                FileStream fsw = new FileStream(targetFileName, FileMode.Create);
-                BinaryWriter writer = new BinaryWriter(fsw);
+                if (importAnchor != null)
+                {
+                    targetFileName = Sims2Directories.Teleport + importAnchor.crc + ".Sims2Import";
 
-                string t1 = "Sims2 Packager 1.0";
-                writer.Write(t1.ToCharArray());
+                    // FileMode.Create overwrites; reinstalling the same lot would
+                    // otherwise throw on the leftover .Sims2Import file.
+                    FileStream fsw = new FileStream(targetFileName, FileMode.Create);
+                    BinaryWriter writer = new BinaryWriter(fsw);
 
-                byte[] xml = GenerateXML(false);
-                UInt32 nOffset = (UInt32)xml.Length + 22;
-                writer.Write(nOffset);
+                    string t1 = "Sims2 Packager 1.0";
+                    writer.Write(t1.ToCharArray());
 
-                writer.Write(xml);
-                writer.Close();
+                    byte[] xml = GenerateXML(false);
+                    UInt32 nOffset = (UInt32)xml.Length + 22;
+                    writer.Write(nOffset);
+
+                    writer.Write(xml);
+                    writer.Close();
+                }
 
                 //End of import creation
 
@@ -638,27 +682,16 @@ namespace Sims2Pack_Installer
 
                         //Determine target directory
 
-                        if (dataControl.files[i].info.installToTeleport)
+                        // Lot/Family/Person/Sim records are imported via the
+                        // Teleport folder; CC parts drop into Downloads as
+                        // loose .package files. Legacy code consulted
+                        // S2PCI.ini [SubFolders] to map each file type to a
+                        // per-type subfolder under Downloads; v1 drops the .ini
+                        // and installs everything to the Downloads root.
+                        if (GoesToTeleport(dataControl.files[i]))
                             targetFileName = Sims2Directories.Teleport + dataControl.files[i].crc + ".Sims2Tmp";
                         else
-                            switch (dataControl.files[i].type)
-                            {
-                                case "Lot":
-                                case "Family":
-                                case "Person":
-                                    // I believe that this code is unreachable 
-                                    // because these files should all have installToTeleport
-                                    targetFileName = Sims2Directories.Teleport + dataControl.files[i].crc + ".Sims2Tmp";
-                                    break;
-                                default:
-                                    // Legacy code consulted S2PCI.ini [SubFolders] to map each
-                                    // file type to a per-type subfolder under Downloads. v1
-                                    // drops the .ini and installs everything to Downloads root.
-                                    targetFileName = Sims2Directories.Downloads + dataControl.files[i].fileName;
-                                    break;
-
-
-                            }
+                            targetFileName = Sims2Directories.Downloads + dataControl.files[i].fileName;
                         if (ShowFileWarningDialog(targetFileName))
                             WriteToFile(targetFileName, byteArray);
                     }

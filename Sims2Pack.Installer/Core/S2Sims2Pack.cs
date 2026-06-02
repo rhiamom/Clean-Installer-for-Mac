@@ -714,6 +714,7 @@ namespace Sims2Pack_Installer
 
         public bool InstallNormalPackage(string folder, bool addToDB)
         {
+            bool wroteAnything = false;
             try
             {
                 string targetFileName = "";
@@ -754,12 +755,32 @@ namespace Sims2Pack_Installer
                         byte[] byteArray = new Byte[dataControl.files[i].size];
                         byteArray = dbpf.ReadBytes(dataControl.files[i].size);
 
-                        //Determine target directory
+                        //Determine target file name. Prefer the Sims2Pack's own
+                        //human-readable name (e.g. "BlueMosaicFloor.package") over
+                        //the gibberish internal name ("floor_ed737ea.package").
+                        //Multi-file packs keep the internal stem as a suffix so
+                        //the extracted files stay unique.
 
-                        targetFileName = folder + dataControl.files[i].fileName;
+                        string packBase = System.IO.Path.GetFileNameWithoutExtension(dataControl.fileName);
+                        string ext      = System.IO.Path.GetExtension(dataControl.files[i].fileName);
+                        if (string.IsNullOrEmpty(ext)) ext = ".package";
+
+                        string leaf;
+                        if (string.IsNullOrWhiteSpace(packBase))
+                            leaf = dataControl.files[i].fileName;                       // fallback: original name
+                        else if (dataControl.files.Count == 1)
+                            leaf = packBase + ext;
+                        else
+                            leaf = packBase + "_" +
+                                   System.IO.Path.GetFileNameWithoutExtension(dataControl.files[i].fileName) + ext;
+
+                        targetFileName = folder + leaf;
 
                         if(ShowFileWarningDialog(targetFileName))
+                        {
                             WriteToFile(targetFileName, byteArray);
+                            wroteAnything = true;
+                        }
                     }
                     else
                     {
@@ -773,7 +794,7 @@ namespace Sims2Pack_Installer
                 Debug.WriteLine(e.GetType().Name + ": " + e.Message + "\n" + e.StackTrace);
                 return false;
             }
-            return true;
+            return wroteAnything;
         }
 
         public bool InstallPackage(bool defaultInstall, string folder, string ext, bool createImport,

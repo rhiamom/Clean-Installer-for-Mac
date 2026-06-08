@@ -6,5 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>$(NoWarn);CS1591;NU1701</NoWarn>
+    <Authors>GramzeSweatshop (rhiamom@mac.com)</Authors>
+    <Copyright>Sims2Pack Clean Installer © 2004–2007 Karol Rybak (+ phervers, Andi8104, Mootilda); SimPE © 2004–2007 Ambertation (Quaxi); macOS port © 2026 GramzeSweatshop. GPL v3.</Copyright>
   </PropertyGroup>
 </Project>

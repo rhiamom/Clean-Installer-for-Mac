@@ -1,3 +1,10 @@
+/***************************************************************************
+ *   Vendored from SimPE                                                   *
+ *   Copyright (C) 2004-2007 by Ambertation (Quaxi) <quaxi@ambertation.de> *
+ *   .NET 8 / Avalonia port © 2026 GramzeSweatshop (rhiamom@mac.com)       *
+ *                                                                         *
+ *   GNU GPLv2 or later, see LICENSE.                                      *
+ ***************************************************************************/
 // =============================================================================
 // SimPe namespace surface used by the Clean Installer (hash + string helpers).
 //

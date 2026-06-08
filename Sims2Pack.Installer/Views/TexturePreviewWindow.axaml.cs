@@ -1,3 +1,10 @@
+/***************************************************************************
+ *   Copyright (C) 2004-2007 by Karol Rybak                                *
+ *   Additional programming © 2010-2014 Mootilda                           *
+ *   .NET 8 / Avalonia port © 2026 GramzeSweatshop (rhiamom@mac.com)       *
+ *                                                                         *
+ *   GNU GPLv2 or later, see LICENSE.                                      *
+ ***************************************************************************/
 using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Interactivity;

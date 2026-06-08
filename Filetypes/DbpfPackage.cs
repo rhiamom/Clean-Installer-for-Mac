@@ -1,3 +1,10 @@
+/***************************************************************************
+ *   Vendored from SimPE                                                   *
+ *   Copyright (C) 2004-2007 by Ambertation (Quaxi) <quaxi@ambertation.de> *
+ *   .NET 8 / Avalonia port © 2026 GramzeSweatshop (rhiamom@mac.com)       *
+ *                                                                         *
+ *   GNU GPLv2 or later, see LICENSE.                                      *
+ ***************************************************************************/
 // =============================================================================
 // Focused DBPF v1.1 (Sims 2 .package) reader / writer for the Clean Installer.
 //
